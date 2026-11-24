@@ -1,0 +1,1 @@
+This file stores persistent memories about the user across sessions.
