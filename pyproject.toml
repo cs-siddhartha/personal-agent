@@ -9,3 +9,10 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "python-telegram-bot>=22.8",
 ]
+
+[dependency-groups]
+dev = [
+    "conventional-pre-commit>=4.5.0",
+    "pre-commit>=4.7.0",
+    "ruff>=0.17.6",
+]
