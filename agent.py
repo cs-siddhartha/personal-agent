@@ -1,7 +1,10 @@
 import os
-import json
+
 from openai import AsyncOpenAI
+
 from tools.registry import registry
+
+LOCAL_ONLY_TOOLS = {"run_shell", "write_file"}
 
 
 class Agent:
@@ -36,7 +39,9 @@ class Agent:
             self.conversations[session_id] = []
         return self.conversations[session_id]
 
-    async def run_conversation(self, session_id: str, user_message: str) -> str:
+    async def run_conversation(
+        self, session_id: str, user_message: str, *, channel_id: str, user_id: str
+    ) -> str:
         history = self._get_history(session_id)
         history.append({"role": "user", "content": user_message})
 
@@ -47,7 +52,12 @@ class Agent:
         ]
 
         # Get tool schemas so the model knows what tools are available
-        tools = registry.get_schemas()
+        tools = [
+            schema
+            for schema in registry.get_schemas()
+            if channel_id == "cli" or schema["function"]["name"] not in LOCAL_ONLY_TOOLS
+        ]
+        allowed_tools = {schema["function"]["name"] for schema in tools}
         max_iterations = 10
 
         for _ in range(max_iterations):
@@ -66,10 +76,18 @@ class Agent:
 
                 # Execute each tool call and feed results back
                 for tool_call in assistant_message.tool_calls:
-                    result = await registry.dispatch(
-                        tool_call.function.name,
-                        tool_call.function.arguments,
-                    )
+                    tool_name = tool_call.function.name
+                    if tool_name not in allowed_tools:
+                        result = f"Tool '{tool_name}' is unavailable in this channel."
+                    else:
+                        context = (
+                            {"channel_id": channel_id, "user_id": user_id}
+                            if tool_name == "schedule_task"
+                            else {}
+                        )
+                        result = await registry.dispatch(
+                            tool_name, tool_call.function.arguments, **context
+                        )
                     messages.append(
                         {
                             "role": "tool",

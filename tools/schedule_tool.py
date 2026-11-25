@@ -37,16 +37,9 @@ registry.register(
                 "type": "integer",
                 "description": "How often to run this task, in minutes",
             },
-            "channel_id": {
-                "type": "string",
-                "description": "The channel to deliver results to (e.g. 'telegram')",
-            },
-            "user_id": {
-                "type": "string",
-                "description": "The user ID to send results to",
-            },
         },
-        "required": ["prompt", "interval_minutes", "channel_id", "user_id"],
+        "required": ["prompt", "interval_minutes"],
+        "additionalProperties": False,
     },
     handler=schedule_task,
 )

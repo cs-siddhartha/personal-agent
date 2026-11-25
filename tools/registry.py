@@ -1,5 +1,6 @@
 import json
-from typing import Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+
 
 class Tool:
     def __init__(
@@ -8,7 +9,7 @@ class Tool:
         description: str,
         parameters: dict,
         handler: Callable[..., Awaitable[str]],
-    ): 
+    ):
         self.name = name
         self.description = description
         self.parameters = parameters
@@ -34,21 +35,23 @@ class ToolRegistry:
         name: str,
         description: str,
         parameters: dict,
-        handler: Callable[..., Awaitable[str]]
+        handler: Callable[..., Awaitable[str]],
     ):
         self._tools[name] = Tool(name, description, parameters, handler)
 
     def get_schemas(self) -> list[dict]:
         return [tool.schema() for tool in self._tools.values()]
 
-    async def dispatch(self, name: str, arguments: str) -> str:
+    async def dispatch(self, name: str, arguments: str, **context: str) -> str:
         if name not in self._tools:
-            return json.dumps({"error": f"Unknown tool: {name}"  })
+            return json.dumps({"error": f"Unknown tool: {name}"})
         try:
             args = json.loads(arguments)
+            # Caller-supplied context takes precedence over model-generated arguments.
+            args.update(context)
             result = await self._tools[name].handler(**args)
             return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - tool failures are returned to the model
             return json.dumps({"error": str(e)})
 
 

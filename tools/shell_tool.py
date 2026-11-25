@@ -1,19 +1,25 @@
 import asyncio
+
 from tools.registry import registry
+
 
 async def run_shell(command: str) -> str:
     process = await asyncio.create_subprocess_shell(
         command,
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
+        stderr=asyncio.subprocess.PIPE,
     )
     stdout, stderr = await process.communicate()
-    output = stdout.output() if stdout else ""
-    errors = stderr.output() if stderr else ""
+    output = stdout.decode(errors="replace").strip()
+    errors = stderr.decode(errors="replace").strip()
 
-    if errors: 
-        output += f"\nSTDERR: {errors}"
-    return output.strip() or "(no output)"
+    result = [f"Exit code: {process.returncode}"]
+    if output:
+        result.append(output)
+    if errors:
+        result.append(f"STDERR: {errors}")
+    return "\n".join(result)
+
 
 registry.register(
     name="run_shell",
